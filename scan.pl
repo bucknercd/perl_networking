@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-#Filename: test_client.pl
+#Filename: scan.pl
 
 use IO::Socket::INET;
 #use lib '/home/chris/cpan/lib/';
