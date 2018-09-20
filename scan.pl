@@ -46,9 +46,10 @@ sub is_alive {
     my $ret_val;
     $p = Net::Ping->new();
     if ($p->ping($host)) {
-        print "$host is alive.\n";
+        print "*** $host is alive. ***\n";
         $ret_val = 1;
     } else {
+        print "$host is dead.\n";
         $ret_val = 0;
     }
     $p->close();
@@ -59,20 +60,22 @@ sub port_scan {
     my $target = shift || print "Error: no target provided for port scan on $target\n";
     my $sock;
     my @open_ports;
-    print "Scanning first 1000 ports on target $target\n";
+    print "Scanning first 8000 ports on target $target\n";
     my $j = 0;
-    for (my $i=0; $i < 1000; $i++) {
+    for (my $i=0; $i < 10000; $i++) {
         $sock = create_sock($target, $i);
         if (!$sock) {
+            #print "Cannot connect on port $i\n";
+            #print".";
             next;
         } else {
-            #print "\nCan connect to $target:$i\n";
+            print "\nCan connect to $target:$i\n";
             $open_ports[$j] = $i;
             $j++;
             close($sock);
         }
     }
-    print "Open ports detected on target $target:\n   " . join("\n   ", @open_ports) . "\n" if @open_ports;
+    print "\nOpen ports detected on target $target:\n   " . join("\n   ", @open_ports) . "\n" if @open_ports;
 }
 
 
