@@ -1,0 +1,14 @@
+GET / HTTP/1.1
+
+Host: 172.217.1.228
+
+Connection: keep-alive
+
+Accept-Encoding: gzip, deflate
+
+Accept: */*
+
+User-Agent: HTTPie/0.9.2
+
+
+

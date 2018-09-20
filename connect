@@ -1,0 +1,120 @@
+#!/usr/bin/perl
+use strict;
+use Data::Dumper;
+use IO::Socket::INET;
+
+my @args = @ARGV;
+my $arg_len = @ARGV;
+my $help_flag = 0;
+my $usage = "Usage: connect <ip_address> <port> <protocl> [data]\nEXAMPLES:\n\tconnect 192.168.1.100 80 tcp http\n\tconnect 8.8.8.8 53 dns www.netflix.com\n";
+
+if ($arg_len < 3) {
+    print $usage;
+    exit;
+}
+
+if (!valid_ip($args[0])) {
+    print "Invalid IP ADDRESS!\n";
+    exit;
+}
+
+do_connect(\@args);
+
+sub valid_ip {
+    my $ip = shift;
+    my @octets = split(/\./, $ip);
+    if (scalar(@octets) != 4) {
+        return 0;
+    }
+
+    foreach my $oct (@octets) {
+        if ($oct > 254) {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+sub dns_query {
+    my $ip = shift;
+    my $port = shift;
+    my $data = shift;
+    if (!defined($data)) {
+        print "Erorr. DNS Query is empty! Please input what to lookup.\n";
+        exit;
+    }
+    my $sock = IO::Socket::INET->new(PeerAddr => "$ip:$port", Proto => 'udp');
+    my @parts = split(/\./, $data);
+    my $mesg = 
+        "\xf6\x54".                 # transaction id
+        "\x01\x00".                 # standard query
+        pack("n", 1).               # questions
+        pack("nnn", 0).
+        pack("C", length($parts[0])). $parts[0].          # len, val
+        pack("C", length($parts[1])). $parts[1].          # len, val
+        pack("C", length($parts[2])). $parts[2].          # len, val 
+        "\x00".             # to mark end of dns name
+        pack("n", 1).
+        pack("n", 1);
+
+    $sock->send($mesg);
+    my $buf;
+    $sock->recv($buf, 1024);
+    my $resolved_ip = '';
+    my ($oct1, $oct2, $oct3, $oct4);
+    $oct1 = unpack("C", substr($buf, -4, 1));
+    $oct2 = unpack("C", substr($buf, -3, 1));
+    $oct3 = unpack("C", substr($buf, -2, 1));
+    $oct4 = unpack("C", substr($buf, -1, 1));
+
+    print "Hostname: $data\nResolved to: $oct1.$oct2.$oct3.$oct4\n";
+    open(FH, ">dns_dump.dat");
+    print FH substr($buf, -4, 1);
+}
+
+sub http_get {
+    my $ip = shift;
+    my $port = shift;
+    my $data = shift;
+    my $sock = IO::Socket::INET->new(PeerAddr => "$ip:$port", Proto => 'tcp');
+    my $mesg;
+    if (!defined($data)) {
+        $mesg = 
+            "GET / HTTP/1.1\r\n". 
+            "Host: $ip\r\n".
+            "Connection: keep-alive\r\n".
+            "\r\n";
+    } else {
+        $mesg = 
+            "GET $data HTTP/1.1\r\n".
+            "Host: $ip\r\n".
+            "Connection: keep-alive\r\n".
+            "\r\n";
+    }
+                                               
+    $sock->send($mesg);
+    my $buf;
+    $sock->recv($buf, 1024);
+    print "RESPONSE:\n$buf\n";
+}
+
+sub do_connect {
+    my $ref = shift;
+    my @args = @{$ref};
+    my $ip = $args[0];
+    my $port = $args[1];
+    my $protocol = $args[2];
+    my $data = $args[3];
+
+    if ($protocol eq 'dns') {
+        dns_query($ip, $port, $data);
+    } elsif ($protocol eq 'http') {
+        http_get($ip, $port, $data);
+    }
+}
+
+
+
+
+
