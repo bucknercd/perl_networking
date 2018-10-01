@@ -8,7 +8,7 @@ use Net::Ping;
 use Data::Dumper;
 
 my $DEBUG = 0;
-my $MAX_PORT = 64000;
+my $MAX_PORT = 10000;
 my $PUBLIC_IP;
 my $LOCAL_IP;
 
@@ -113,7 +113,7 @@ sub port_scan {
     my $sock;
     my @open_ports;
     print "Scanning first $MAX_PORT ports on target $target\n";
-    for (my $port=10000; $port <= $MAX_PORT; $port++) {
+    for (my $port=1; $port <= $MAX_PORT; $port++) {
         $sock = create_sock($target, $port);
         if (!$sock) {
 	    if ($DEBUG) {
