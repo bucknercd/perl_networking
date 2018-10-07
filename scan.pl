@@ -1,7 +1,7 @@
 #!/usr/bin/perl -w
 # NOTE: This file MUST be run as ROOT
 #Filename: scan.pl
-use strict;
+#use strict;
 use IO::Socket::INET;
 #use lib '/home/chris/cpan/lib/';
 use Net::Ping;
@@ -13,6 +13,7 @@ my $PUBLIC_IP;
 my $LOCAL_IP;
 
 #### MAIN ####
+#print Dumper(\@INC);
 set_local_ip();
 set_public_ip();
 display_pc_info();
