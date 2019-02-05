@@ -149,35 +149,35 @@ sub port_scan {
 }
 
 sub arp_scan {
-	my $target = shift;
-	my $arp_report = "\nARP INFO:\n";
-	if ($target eq $LOCAL_IP) {
-	    $arp_report .= "Scanning IP (me)\n";
+    my $target = shift;
+    my $arp_report = "\nARP INFO:\n";
+    if ($target eq $LOCAL_IP) {
+        $arp_report .= "Scanning IP (me)\n";
+    }
+    my $arp_output = `arp -a $target`;
+    if ($arp_output =~ /([^:]{2}:[^:]{2}:[^:]{2}:[^:]{2}:[^:]{2})/) {
+        my $mac_id = $1;
+	$arp_report .= "$mac_id => ";
+    	my $searchable_mac = join('', split(':', $mac_id));
+	$searchable_mac = substr($searchable_mac, 0, 6);
+	my $manufacturer = undef;
+	my $oui_path = '/usr/share/nmap/nmap-mac-prefixes';
+	open(FH, $oui_path) or die "Unable to open OUI file $oui_path\n";
+	my @lines = <FH>;
+	close(FH);
+	my $found = undef;
+	for my $line (@lines) {
+	    if ($line =~ /^$searchable_mac (.*)/i) {
+	        my $manufacturer = $1;
+		$found++;
+		$arp_report .= "$manufacturer\n";
+	    }
 	}
-	my $arp_output = `arp -a $target`;
-	if ($arp_output =~ /([^:]{2}:[^:]{2}:[^:]{2}:[^:]{2}:[^:]{2})/) {
-		my $mac_id = $1;
-		$arp_report .= "$mac_id => ";
-		my $searchable_mac = join('', split(':', $mac_id));
-		$searchable_mac = substr($searchable_mac, 0, 6);
-		my $manufacturer = undef;
-		my $oui_path = '/usr/share/nmap/nmap-mac-prefixes';
-		open(FH, $oui_path) or die "Unable to open OUI file $oui_path\n";
-		my @lines = <FH>;
-		close(FH);
-		my $found = undef;
-		for my $line (@lines) {
-			if ($line =~ /^$searchable_mac (.*)/i) {
-				my $manufacturer = $1;
-				$found++;
-				$arp_report .= "$manufacturer\n";
-			}
-		}
-		if (!$found) {
-			$arp_report .= "unknown\n";
-		}
+	if (!$found) {
+	    $arp_report .= "unknown\n";
 	}
-	return "$arp_report=====================================================\n\n";
+    }
+    return "$arp_report=====================================================\n\n";
 }
 
 sub usage {
