@@ -1802,6 +1802,11 @@ sub _resolv {
 
   # address check
   # new way
+
+  # Added to this lib by Chris Buckner
+  $Socket::VERSION =~ s/_//;
+  # end of addition to lib
+
   if ($Socket::VERSION >= 1.94) {
     my %hints = (
       family   => $AF_UNSPEC,

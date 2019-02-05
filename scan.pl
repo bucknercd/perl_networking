@@ -1,7 +1,7 @@
 #!/usr/bin/perl -w
 # NOTE: This file MUST be run as ROOT
 #Filename: scan.pl
-#use strict;
+use strict;
 use IO::Socket::INET;
 #use lib '/home/chris/cpan/lib/';
 use Net::Ping;
@@ -13,15 +13,21 @@ my $PUBLIC_IP;
 my $LOCAL_IP;
 
 #### MAIN ####
-#print Dumper(\@INC);
-set_local_ip();
-set_public_ip();
-display_pc_info();
+my $current_dir = `pwd`;
+#chomp($current_dir);
+#unshift(@INC, $current_dir);
+#print Dumper(@INC);
+
 my $target = shift || 'localhost';
 if ($target eq '-h' or $target =~ /help/i) {
     print usage();
     exit;
 }
+
+set_local_ip();
+set_public_ip();
+display_pc_info();
+
 my $port_flag = shift || '?';
 my $port_scan = 0;
 $port_scan = 1 if $port_flag eq '-p';
@@ -31,14 +37,23 @@ if (substr($target, -2) eq '.0') {
     my $base_target = substr($target, 0, -1);
     for (my $i = 1; $i < 255; $i++) {
         $target = $base_target . $i;
-        if (is_alive($target) && $port_scan == 1) {
-            port_scan($target);
+	my $report;
+        if (is_alive($target)) {
+	    $report .= "\n$target is alive";
+	    if ($port_scan == 1) {
+       		$report .= port_scan($target);
+	    }
+	    $report .= arp_scan($target);
+	    print $report;
         }
     }
 } else {
     print "Scanning $target ...\n=====================================================\n";
     if (is_alive($target) && $port_scan == 1) {
-        port_scan($target);
+	my $report = "\n$target is alive";
+        $report .= port_scan($target);
+	$report .= arp_scan($target);
+	print $report;
     }
 }
 
@@ -83,7 +98,7 @@ sub create_sock {
 	PeerAddr  =>   $target,
         PeerPort   =>   $port,
         Proto      =>   $proto,
-	Timeout    =>   1,
+	Timeout    =>   0.025,
     );
     if (!$sock && $DEBUG) {
 	foreach ($@) {
@@ -99,10 +114,10 @@ sub is_alive {
     my $p = Net::Ping->new("icmp");
     $p->bind($LOCAL_IP);
     if ($p->ping($host, 2)) {
-        print "\n*** $host is reachable. ***\n";
+	#print "\n*** $host is reachable. ***\n";
         $ret_val = 1;
     } else {
-        print "\n$host is NOT reachable.\n";
+	#print "\n$host is NOT reachable.\n";
         $ret_val = 0;
     }
     $p->close();
@@ -120,23 +135,57 @@ sub port_scan {
 	    if ($DEBUG) {
                 print "\nCannot connect on port $port\n";
 	    } elsif (!$DEBUG) {
-                print STDERR ".";
+		#print STDERR ".";
                 next;
 	    }
         } else {
-            print "\nCan connect to $target:$port\n";
+	    #print "\nCan connect to $target:$port\n";
 	    push(@open_ports, $port);
             close($sock);
         }
     }
-    print "\nOpen ports detected on target $target:\n   " . join("\n   ", @open_ports) . "\n" if @open_ports;
+    my $report = "\nOpen ports detected on target $target:\n   " . join("\n   ", @open_ports) . "\n" if @open_ports;
+    return $report;
+}
+
+sub arp_scan {
+	my $target = shift;
+	my $arp_report = "\nARP INFO:\n";
+	if ($target eq $LOCAL_IP) {
+	    $arp_report .= "Scanning IP (me)\n";
+	}
+	my $arp_output = `arp -a $target`;
+	if ($arp_output =~ /([^:]{2}:[^:]{2}:[^:]{2}:[^:]{2}:[^:]{2})/) {
+		my $mac_id = $1;
+		$arp_report .= "$mac_id => ";
+		my $searchable_mac = join('', split(':', $mac_id));
+		$searchable_mac = substr($searchable_mac, 0, 6);
+		my $manufacturer = undef;
+		my $oui_path = '/usr/share/nmap/nmap-mac-prefixes';
+		open(FH, $oui_path) or die "Unable to open OUI file $oui_path\n";
+		my @lines = <FH>;
+		close(FH);
+		my $found = undef;
+		for my $line (@lines) {
+			if ($line =~ /^$searchable_mac (.*)/i) {
+				my $manufacturer = $1;
+				$found++;
+				$arp_report .= "$manufacturer\n";
+			}
+		}
+		if (!$found) {
+			$arp_report .= "unknown\n";
+		}
+	}
+	return "$arp_report=====================================================\n\n";
 }
 
 sub usage {
-    my $usage = "usage: scan.pl [ip address] [-p]\n".
+    my $usage = "\nusage: scan.pl [ip address] [-p]\n".
                "\tIf you do not provide a first argument at all the scan will be on localhost.\n".
                "\tThe ip address can be a singular ip address or a network ip address. (i.e. 192.168.1.0)\n".
-               "\tIf the -p flag is provided a port scan of the first $MAX_PORT ports\n";
+	       "\tIf the ip address ends in a zero, it will be assumed that it is a /24 subnet and all hosts will be scanned on that subnet.\n".
+               "\tIf the -p flag is provided a port scan of the first $MAX_PORT ports\n\n\n";
 
     return $usage;
 }
