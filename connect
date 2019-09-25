@@ -7,7 +7,9 @@ use IO::Socket::INET;
 my @args = @ARGV;
 my $arg_len = @ARGV;
 my $help_flag = 0;
-my $usage = "Usage: connect <ip_address> <port> <protocl> [data]\nEXAMPLES:\n\tconnect 192.168.1.100 80 tcp http\n\tconnect 8.8.8.8 53 dns www.netflix.com\n";
+my $usage = "Usage: connect <ip_address> <port> <protocl> [data]\nEXAMPLES:\n\tconnect 192.168.1.100 80 http\n\tconnect 8.8.8.8 53 dns www.netflix.com\n";
+
+# current supported protocols are http and dns. Look into supporting simple tcp and udp port connects
 
 if ($arg_len < 3) {
     print $usage;
