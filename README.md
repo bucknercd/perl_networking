@@ -6,3 +6,4 @@ $perl scan --help produces usage.
 'connect' currently supports only http and dns protocols.
 
 Note: 'scan' must be run as root for it to work since it uses icmp for pings.
+

@@ -3,11 +3,14 @@ use strict;
 use Data::Dumper;
 use IO::Socket::INET;
 
+use constant (
+                DEBUG => 1,
+             );
 
 my @args = @ARGV;
 my $arg_len = @ARGV;
 my $help_flag = 0;
-my $usage = "Usage: connect <ip_address> <port> <protocl> [data]\nEXAMPLES:\n\tconnect 192.168.1.100 80 http\n\tconnect 8.8.8.8 53 dns www.netflix.com\n";
+my $usage = "Usage: connect <ip_address> <port> <http|dns|tcp|udp> [data]\nEXAMPLES:\n\tconnect 192.168.1.100 80 http\n\tconnect 8.8.8.8 53 dns www.netflix.com\n\tconnect 192.168.1.5 8080 tcp\n";
 
 # current supported protocols are http and dns. Look into supporting simple tcp and udp port connects
 
@@ -76,11 +79,39 @@ sub dns_query {
     print FH substr($buf, -4, 1);
 }
 
+sub create_sock {
+    my $target = shift;
+    my $port = shift;
+    my $proto = shift || 'tcp';
+    my $sock = IO::Socket::INET->new(
+        PeerAddr   =>   $target,
+        PeerPort   =>   $port,
+        Proto      =>   $proto,
+        Timeout    =>   .5,
+    );
+    if (!$sock && DEBUG) {
+        foreach ($@) {
+            print "$_\n";
+        }
+    }
+    return $sock;
+}
+
+sub port_check {
+    my $target = shift;
+    my $port = shift;
+    my $proto = shift || 'tcp';
+    my $sock = create_sock($target, $port, $proto);
+    if ($sock) {
+        print "\n$proto connection established to port $port\n\n";
+    }
+}
+
 sub http_get {
     my $ip = shift;
     my $port = shift;
     my $data = shift;
-    my $sock = IO::Socket::INET->new(PeerAddr => "$ip:$port", Proto => 'tcp');
+    my $sock = create_sock($ip, $port);
     my $mesg;
     if (!defined($data)) {
         $mesg = 
@@ -114,6 +145,8 @@ sub do_connect {
         dns_query($ip, $port, $data);
     } elsif ($protocol eq 'http') {
         http_get($ip, $port, $data);
+    } elsif ($protocol =~ /(?:tcp|udp)/) {
+        port_check($ip, $port, $protocol);
     }
 }
 
